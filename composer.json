@@ -1,0 +1,34 @@
+{
+    "name": "psiphp/object-agent-bolt",
+    "description": "Object agent for bolt",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Daniel Leech",
+            "email": "daniel@dantleech.com"
+        }
+    ],
+    "require": {
+        "psiphp/object-agent": "^1.0@dev"
+    },
+    "require-dev": {
+        "bolt/bolt": "^3.0",
+        "passwordlib/passwordlib": "^1.0@beta",
+        "phpunit/phpunit": "^5.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Psi\\Bridge\\ObjectAgent\\Bolt\\": "lib/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Psi\\Bridge\\ObjectAgent\\Bolt\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    }
+}
