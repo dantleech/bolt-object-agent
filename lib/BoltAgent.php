@@ -177,6 +177,16 @@ class BoltAgent implements AgentInterface
 
         $repository = $this->entityManager->getRepository($query->getClassFqn());
 
+        // return "raw" sql result, unfortunately "adding" the bolt joins and
+        // performing worse-than double query.
+        if ($query->getSelects()) {
+            $repository->findWith($queryBuilder);
+
+            // TODO: May as well add the object results to the raw results as
+            //       with Doctrine ORM
+            return $queryBuilder->execute();
+        }
+
         return new ArrayCollection(
             $repository->findWith($queryBuilder)
         );
@@ -214,9 +224,7 @@ class BoltAgent implements AgentInterface
 
         $this->buildSelects($queryBuilder, $query);
         $this->buildJoins($queryBuilder, $query);
-        $this->build($queryBuilder, $query);
 
-        $queryBuilder->select($selects);
         return $queryBuilder;
 
     }
@@ -248,7 +256,7 @@ class BoltAgent implements AgentInterface
         foreach ($query->getJoins() as $join) {
             switch ($join->getType()) {
                 case Join::INNER_JOIN:
-                    $queryBuilder->innerJoin($join->getJoin(), $join->getAlias());
+                    $queryBuilder->innerJoin($join->getFrom(), $join->getJoin(), $join->getAlias(), $join->getCondition());
                     continue 2;
                 case Join::LEFT_JOIN:
                     $queryBuilder->leftJoin($join->getJoin(), $join->getAlias());
