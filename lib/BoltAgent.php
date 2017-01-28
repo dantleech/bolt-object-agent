@@ -196,6 +196,10 @@ class BoltAgent implements AgentInterface
     {
         $queryBuilder = $this->getQueryBuilder($query);
         $queryBuilder->select('count(' . self::SOURCE_ALIAS . '.id)');
+        if ($query->getSelects()) {
+            $repository = $this->entityManager->getRepository($query->getClassFqn());
+            $repository->findWith($queryBuilder);
+        }
         $statement = $queryBuilder->execute();
         return (int) $statement->fetchColumn();
     }
@@ -224,6 +228,7 @@ class BoltAgent implements AgentInterface
 
         $this->buildSelects($queryBuilder, $query);
         $this->buildJoins($queryBuilder, $query);
+        $queryBuilder->setParameters($visitor->getParameters());
 
         return $queryBuilder;
 
