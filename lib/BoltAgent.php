@@ -16,17 +16,21 @@ use Psi\Component\ObjectAgent\Query\Query;
 use Bolt\Storage\EntityManager;
 use Psi\Bridge\ObjectAgent\Bolt\ExpressionVisitor;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Psi\Component\ObjectAgent\Query\Join;
 
 class BoltAgent implements AgentInterface
 {
     const SOURCE_ALIAS = 'a';
 
     private $entityManager;
+    private $contentNamespacePrefix;
 
     public function __construct(
-        EntityManager $entityManager
+        EntityManager $entityManager,
+        $contentNamespacePrefix = '__FIXME__'
     ) {
         $this->entityManager = $entityManager;
+        $this->contentNamespacePrefix = $contentNamespacePrefix;
     }
 
     /**
@@ -143,6 +147,15 @@ class BoltAgent implements AgentInterface
         return (bool) $mapper->getClassMetadata($class);
     }
 
+    public function getRealClassFqn(string $classFqn)
+    {
+        if (false === strpos($classFqn, '\\')) {
+            return $this->contentNamespacePrefix . '\\' . ucfirst($classFqn);
+        }
+
+        return $classFqn;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -199,6 +212,53 @@ class BoltAgent implements AgentInterface
             $queryBuilder->setParameters($visitor->getParameters());
         }
 
+        $this->buildSelects($queryBuilder, $query);
+        $this->buildJoins($queryBuilder, $query);
+        $this->build($queryBuilder, $query);
+
+        $queryBuilder->select($selects);
         return $queryBuilder;
+
     }
+
+    private function buildSelects(QueryBuilder $queryBuilder, Query $query)
+    {
+        $selects = [];
+        foreach ($query->getSelects() as $selectName => $selectAlias) {
+            $select = $selectName . ' ' . $selectAlias;
+
+            // if the "index" is numeric, then assume that the value is the
+            // name and that no alias is being used.
+            if (is_int($selectName)) {
+                $select = $selectAlias;
+            }
+
+            $selects[] = $select;
+        }
+
+        if (empty($selects)) {
+            return;
+        }
+
+        $queryBuilder->select($selects);
+    }
+
+    private function buildJoins(QueryBuilder $queryBuilder, Query $query)
+    {
+        foreach ($query->getJoins() as $join) {
+            switch ($join->getType()) {
+                case Join::INNER_JOIN:
+                    $queryBuilder->innerJoin($join->getJoin(), $join->getAlias());
+                    continue 2;
+                case Join::LEFT_JOIN:
+                    $queryBuilder->leftJoin($join->getJoin(), $join->getAlias());
+                    continue 2;
+            }
+
+            throw new \InvalidArgumentException(sprintf(
+                'Do not know what to do with join of type "%s"', $join->getType()
+            ));
+        }
+    }
+
 }
