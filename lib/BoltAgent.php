@@ -147,7 +147,7 @@ class BoltAgent implements AgentInterface
         return (bool) $mapper->getClassMetadata($class);
     }
 
-    public function getRealClassFqn(string $classFqn)
+    public function getCanonicalClassFqn(string $classFqn): string
     {
         if (false === strpos($classFqn, '\\')) {
             return $this->contentNamespacePrefix . '\\' . ucfirst($classFqn);
@@ -180,11 +180,17 @@ class BoltAgent implements AgentInterface
         // return "raw" sql result, unfortunately "adding" the bolt joins and
         // performing worse-than double query.
         if ($query->getSelects()) {
-            $repository->findWith($queryBuilder);
+            $objects = $repository->findWith($queryBuilder);
 
             // TODO: May as well add the object results to the raw results as
             //       with Doctrine ORM
-            return $queryBuilder->execute();
+            $results = $queryBuilder->execute()->fetchAll();
+
+            foreach (array_keys($results) as $index) {
+                $results[$index]['object'] = $objects[$index];
+            }
+
+            return new \ArrayIterator($results);
         }
 
         return new ArrayCollection(
@@ -197,8 +203,7 @@ class BoltAgent implements AgentInterface
         $queryBuilder = $this->getQueryBuilder($query);
         $queryBuilder->select('count(' . self::SOURCE_ALIAS . '.id)');
         if ($query->getSelects()) {
-            $repository = $this->entityManager->getRepository($query->getClassFqn());
-            $repository->findWith($queryBuilder);
+            $this->addBoltFields($query, $queryBuilder);
         }
         $statement = $queryBuilder->execute();
         return (int) $statement->fetchColumn();
@@ -274,4 +279,13 @@ class BoltAgent implements AgentInterface
         }
     }
 
+    private function addBoltFields(Query $query, QueryBuilder $queryBuilder)
+    {
+        $repository = $this->entityManager->getRepository($query->getClassFqn());
+        $metadata = $repository->getClassMetadata();
+        foreach ($metadata->getFieldMappings() as $field) {
+            $fieldtype = $repository->getFieldManager()->get($field['fieldtype'], $field);
+            $fieldtype->load($queryBuilder, $metadata);
+        }
+    }
 }

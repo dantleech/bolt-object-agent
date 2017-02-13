@@ -68,7 +68,10 @@ class ExpressionVisitor
                 return $this->queryBuilder->gte($this->getField($field), $this->registerParameter($field, $value));
 
             case Comparison::IN:
-                return $this->queryBuilder->in($this->getField($field), $this->registerParameter($field, $value));
+                $expr = $this->queryBuilder;
+                return $this->queryBuilder->in($this->getField($field), array_map(function ($value) use ($expr) {
+                    return $expr->literal($value);
+                }, $value));
 
             case Comparison::NOT_IN:
                 return $this->queryBuilder->notIn($this->getField($field), $this->registerParameter($field, $value));
