@@ -194,7 +194,7 @@ class BoltAgent implements AgentInterface
         }
 
         return new ArrayCollection(
-            $repository->findWith($queryBuilder)
+            $repository->findWith($queryBuilder) ?: []
         );
     }
 
