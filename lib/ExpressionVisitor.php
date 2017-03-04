@@ -96,6 +96,10 @@ class ExpressionVisitor
     {
         $expressions = $expression->getExpressions();
 
+        if (empty($expressions)) {
+            return;
+        }
+
         $ormExpressions = [];
         foreach ($expressions as $index => $childExpression) {
             $ormExpressions[] = $this->dispatch($childExpression);
